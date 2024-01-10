@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Form</title>
+    <script>
+        function handleSubmit(event) {
+            event.preventDefault();
+            var githubUser = document.getElementById('githubUser').value;
+            var mode = document.getElementById('mode').value;
+            var strictness = document.getElementById('strictness').value;
+            var url = '/generate?githubUser=' + encodeURIComponent(githubUser) +
+                '&mode=' + encodeURIComponent(mode) +
+                '&strictness=' + encodeURIComponent(strictness);
+            window.location.href = url;
+        }
+    </script>
+</head>
+
+<body>
+    <form onsubmit="handleSubmit(event)">
+        <label for="githubUser">GitHub User:</label><br>
+        <input type="text" id="githubUser" name="githubUser"><br>
+        <label for="mode">Mode:</label><br>
+        <select id="mode" name="mode">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+        </select><br>
+        <label for="strictness">Strictness:</label><br>
+        <select id="strictness" name="strictness">
+            <option value="strict">Strict</option>
+            <option value="plusOne">+1</option>
+        </select><br>
+        <input type="submit" value="Generate">
+    </form>
+</body>
+
+</html>

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	getdata "github.com/i5heu/github-readme-commit-streak-stats/internal/getData"
+	"github.com/i5heu/github-readme-commit-streak-stats/internal/getData"
 )
 
 func GenerateHandler(w http.ResponseWriter, r *http.Request) {
@@ -14,13 +14,15 @@ func GenerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(githubUser, mode, strictness)
 
-	commitDates, err := getdata.GetCommitDates(githubUser)
+	query, err := getData.GetCommitDates(githubUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	for _, date := range commitDates {
-		w.Write([]byte(date.String() + "\n"))
+	for _, week := range query.User.ContributionsCollection.ContributionCalendar.Weeks {
+		for _, day := range week.ContributionDays {
+			fmt.Printf("On %s, user %s made %d contributions\n", day.Date, githubUser, day.ContributionCount)
+		}
 	}
 }

@@ -1,50 +1,65 @@
-package getdata
+package getData
 
 import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"time"
+	"context"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/shurcooL/githubv4"
+	"golang.org/x/oauth2"
 )
 
-type Event struct {
-	Type      string    `json:"type"`
-	CreatedAt time.Time `json:"created_at"`
+type query struct {
+	User struct {
+		CreatedAt               githubv4.Date
+		ContributionsCollection struct {
+			ContributionYears    []githubv4.Int
+			ContributionCalendar struct {
+				Weeks []struct {
+					ContributionDays []struct {
+						ContributionCount githubv4.Int
+						Date              string
+					}
+				}
+			}
+		}
+	} `graphql:"user(login: $user)"`
 }
 
-func GetCommitDates(user string) ([]time.Time, error) {
-	var commitDates []time.Time
-	page := 1
-	totalEvents := 0
+func GetCommitDates(user string) (query, error) {
 
-	for {
-		resp, err := http.Get(fmt.Sprintf("https://api.github.com/users/%s/events?page=%d", user, page))
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		var events []Event
-		if err := json.NewDecoder(resp.Body).Decode(&events); err != nil {
-			return nil, err
-		}
-
-		// If no events are returned, we've reached the end of the pages
-		if len(events) == 0 {
-			break
-		}
-
-		for _, event := range events {
-			if event.Type == "PushEvent" {
-				commitDates = append(commitDates, event.CreatedAt)
-			}
-			totalEvents++
-		}
-
-		page++
+	// check env for token
+	if os.Getenv("GITHUB_TOKEN") == "" {
+		log.Fatal("GITHUB_TOKEN environment variable not set")
 	}
 
-	fmt.Printf("Total events: %d\n", totalEvents)
+	src := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: os.Getenv("GITHUB_TOKEN")},
+	)
+	httpClient := oauth2.NewClient(context.Background(), src)
 
-	return commitDates, nil
+	client := githubv4.NewClient(httpClient)
+
+	variables := map[string]interface{}{
+		"user": githubv4.String(user),
+	}
+
+	var q query
+
+	err := client.Query(context.Background(), &q, variables)
+	if err != nil {
+		log.Fatalf("Failed to execute query: %v", err)
+		return q, err
+	}
+
+	contributionYears := make([]string, len(q.User.ContributionsCollection.ContributionYears))
+	for i, year := range q.User.ContributionsCollection.ContributionYears {
+		contributionYears[i] = strconv.Itoa(int(year))
+	}
+
+	log.Printf("User %s has contributed in the following years: %s", user, strings.Join(contributionYears, ", "))
+
+	return q, nil
 }

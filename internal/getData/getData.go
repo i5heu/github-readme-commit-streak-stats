@@ -14,6 +14,13 @@ import (
 )
 
 type query struct {
+	RateLimit struct {
+		Cost      githubv4.Int
+		Limit     githubv4.Int
+		NodeCount githubv4.Int
+		Remaining githubv4.Int
+		ResetAt   githubv4.DateTime
+	}
 	User struct {
 		CreatedAt               githubv4.Date
 		ContributionsCollection struct {
@@ -172,4 +179,9 @@ func GetCommitDatesForYear(githubUser string, year int, client *githubv4.Client)
 	}
 
 	return cdc, nil
+}
+
+func storeCommitDates(cdc CommitDataCollection) {
+	// store commit dates in file
+
 }

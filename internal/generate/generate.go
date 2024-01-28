@@ -14,15 +14,13 @@ func GenerateHandler(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Println(githubUser, mode, strictness)
 
-	query, err := getData.GetCommitDates(githubUser)
+	cdc, err := getData.GetCommitDates(githubUser)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	for _, week := range query.User.ContributionsCollection.ContributionCalendar.Weeks {
-		for _, day := range week.ContributionDays {
-			fmt.Printf("On %s, user %s made %d contributions\n", day.Date, githubUser, day.ContributionCount)
-		}
+	for _, cd := range cdc.CommitData {
+		w.Write([]byte(fmt.Sprintf("%d-%d-%d %d\n", cd.Year, cd.Month, cd.Day, cd.Count)))
 	}
 }

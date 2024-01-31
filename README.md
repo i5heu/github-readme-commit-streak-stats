@@ -6,3 +6,9 @@ Show the world your GitHub commit streak!
 ```env
 GITHUB_TOKEN=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+## Example
+
+<p align="center">
+  <img src="https://commit-streak.heidenstedt.org/generate?githubUser=i5heu&mode=dark&strictness=strict&bonusDayEvery=3">
+</p>

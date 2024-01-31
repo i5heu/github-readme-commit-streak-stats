@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"sort"
 	"strconv"
 	"time"
 
+	"encoding/json"
+
+	"github.com/dgraph-io/badger"
 	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
@@ -58,12 +60,45 @@ type CommitData struct {
 	Count int
 }
 
-func GetCommitDates(user string) (CommitDataCollection, error) {
-	err := error(nil)
+func GetCommitDates(db *badger.DB, user string) (CommitDataCollection, error) {
+	var cdc CommitDataCollection
+	var lastFetchTime time.Time
+	currentYear := time.Now().Year()
+	fetchInterval := 6 * time.Hour
+	dataFoundInDB := false
 
-	// check env for token
-	if os.Getenv("GITHUB_TOKEN") == "" {
-		log.Fatal("GITHUB_TOKEN environment variable not set")
+	// Attempt to retrieve data and last fetch time from BadgerDB
+	err := db.View(func(txn *badger.Txn) error {
+		item, err := txn.Get([]byte(user))
+		if err == nil {
+			val, err := item.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(val, &cdc)
+			if err != nil {
+				return err
+			}
+			dataFoundInDB = true
+		} else if err != badger.ErrKeyNotFound {
+			return err
+		}
+
+		timeItem, err := txn.Get([]byte(user + "_lastFetchTime"))
+		if err == nil {
+			val, err := timeItem.ValueCopy(nil)
+			if err != nil {
+				return err
+			}
+			err = json.Unmarshal(val, &lastFetchTime)
+			return err
+		} else if err != badger.ErrKeyNotFound {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return CommitDataCollection{}, err
 	}
 
 	src := oauth2.StaticTokenSource(
@@ -72,33 +107,65 @@ func GetCommitDates(user string) (CommitDataCollection, error) {
 	httpClient := oauth2.NewClient(context.Background(), src)
 	client := githubv4.NewClient(httpClient)
 
-	cdc := CommitDataCollection{}
-	cdc.CommitYears, err = GetCommitYears(user, client)
-	if err != nil {
-		log.Fatalf("Failed to get commit years: %v", err)
-		return CommitDataCollection{}, err
-	}
-
-	// get commit dates for previous year
-	for _, year := range cdc.CommitYears {
-		cdcYear, err := GetCommitDatesForYear(user, year, client)
+	// If data is not found in BadgerDB, fetch all available years from GitHub
+	if !dataFoundInDB {
+		commitYears, err := GetCommitYears(user, client)
 		if err != nil {
-			log.Fatalf("Failed to get commit dates for year %d: %v", year, err)
 			return CommitDataCollection{}, err
 		}
-		cdc.CommitData = append(cdc.CommitData, cdcYear.CommitData...)
+		for _, year := range commitYears {
+			cdcYear, err := GetCommitDatesForYear(user, int(year), client)
+			if err != nil {
+				return CommitDataCollection{}, err
+			}
+			cdc.CommitData = append(cdc.CommitData, cdcYear.CommitData...)
+		}
+		lastFetchTime = time.Time{} // Reset last fetch time
 	}
 
-	sort.Slice(cdc.CommitData, func(i, j int) bool {
-		iData := cdc.CommitData[i]
-		jData := cdc.CommitData[j]
+	// Update the current year's data if necessary
+	if time.Since(lastFetchTime) >= fetchInterval || !dataFoundInDB {
+		cdcYear, err := GetCommitDatesForYear(user, currentYear, client)
+		if err != nil {
+			return CommitDataCollection{}, err
+		}
 
-		iDate := time.Date(iData.Year, time.Month(iData.Month), iData.Day, 0, 0, 0, 0, time.UTC)
-		jDate := time.Date(jData.Year, time.Month(jData.Month), jData.Day, 0, 0, 0, 0, time.UTC)
+		updated := false
+		for i, data := range cdc.CommitData {
+			if data.Year == currentYear {
+				cdc.CommitData[i] = cdcYear.CommitData[0] // Assuming cdcYear.CommitData contains current year data
+				updated = true
+				break
+			}
+		}
+		if !updated {
+			cdc.CommitData = append(cdc.CommitData, cdcYear.CommitData...)
+		}
 
-		// Return true if iDate is after jDate for descending order
-		return iDate.After(jDate)
+		// Update last fetch time
+		lastFetchTime = time.Now()
+	}
+
+	// Serialize and store the updated data and last fetch time in BadgerDB
+	serializedData, err := json.Marshal(cdc)
+	if err != nil {
+		return cdc, err
+	}
+	serializedTime, err := json.Marshal(lastFetchTime)
+	if err != nil {
+		return cdc, err
+	}
+
+	err = db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(user), serializedData)
+		if err != nil {
+			return err
+		}
+		return txn.Set([]byte(user+"_lastFetchTime"), serializedTime)
 	})
+	if err != nil {
+		return cdc, err
+	}
 
 	return cdc, nil
 }
@@ -181,7 +248,25 @@ func GetCommitDatesForYear(githubUser string, year int, client *githubv4.Client)
 	return cdc, nil
 }
 
-func storeCommitDates(cdc CommitDataCollection) {
-	// store commit dates in file
+func storeCommitDataInBadger(user string, cdc CommitDataCollection) error {
+	// Open the BadgerDB
+	db, err := badger.Open(badger.DefaultOptions("./badgerdb.data"))
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
+	// Serialize CommitDataCollection
+	data, err := json.Marshal(cdc)
+	if err != nil {
+		return err
+	}
+
+	// Store the data in BadgerDB
+	err = db.Update(func(txn *badger.Txn) error {
+		err := txn.Set([]byte(user), data)
+		return err
+	})
+
+	return err
 }

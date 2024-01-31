@@ -7,11 +7,13 @@
         function handleSubmit(event) {
             event.preventDefault();
             var githubUser = document.getElementById('githubUser').value;
+            var bonusDayEvery = document.getElementById('bonusDayEvery').value;
             var mode = document.getElementById('mode').value;
             var strictness = document.getElementById('strictness').value;
             var url = '/generate?githubUser=' + encodeURIComponent(githubUser) +
                 '&mode=' + encodeURIComponent(mode) +
-                '&strictness=' + encodeURIComponent(strictness);
+                '&strictness=' + encodeURIComponent(strictness) +
+                '&bonusDayEvery=' + encodeURIComponent(bonusDayEvery);
             window.location.href = url;
         }
     </script>
@@ -21,6 +23,7 @@
     <form onsubmit="handleSubmit(event)">
         <label for="githubUser">GitHub User:</label><br>
         <input type="text" id="githubUser" name="githubUser"><br>
+        <input type="number" id="bonusDayEvery" name="bonusDayEvery" value="3"><br>
         <label for="mode">Mode:</label><br>
         <select id="mode" name="mode">
             <option value="dark">Dark</option>

@@ -1,6 +1,8 @@
 # github-readme-commit-streak-stats
 Show the world your GitHub commit streak!
 
+Demo at https://commit-streak.heidenstedt.org
+
 
 ##  Environment Variables
 ```env

@@ -44,31 +44,32 @@ func GenerateHandler(db *badger.DB, w http.ResponseWriter, r *http.Request) {
 	dc.SetRGB(0, 0, 0)
 	dc.Clear()
 
+	// Set the text color, e.g., white
+	dc.SetRGB(1, 1, 1)
+
 	// Load a font face at double the size of the default (assuming default is 12)
-	if err := dc.LoadFontFace("./fonts/Roboto/Roboto-Regular.ttf", 22); err != nil {
+	if err := dc.LoadFontFace("./fonts/Roboto/Roboto-Regular.ttf", 35); err != nil {
 		log.Println("Failed to load font:", err)
 		http.Error(w, "Failed to load font", http.StatusInternalServerError)
 		return
 	}
 
-	// Set the text color, e.g., white
-	dc.SetRGB(1, 1, 1)
+	heightOfLabel := 4.0
+	heightOfNumber := 2.1
 
-	heightOfLabel := 2.1
-	heightOfNumber := 4.0
+	dc.DrawStringAnchored(fmt.Sprintf("%d", totalCommits), W*0.18, H/2.1, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("%d  Days", currentStreak), W*0.5, H/heightOfNumber, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("%d  Days", longestStreak), W*0.82, H/heightOfNumber, 0.5, 0.5)
 
-	// Draw total contributions
-	dc.DrawStringAnchored(fmt.Sprintf("Total Contributions"), W*0.18, H/heightOfLabel, 0.5, 0.5)
-	dc.DrawStringAnchored(fmt.Sprintf("%d", totalCommits), W*0.18, H/heightOfNumber, 0.5, 0.5)
+	if err := dc.LoadFontFace("./fonts/Roboto/Roboto-Regular.ttf", 23); err != nil {
+		log.Println("Failed to load font:", err)
+		http.Error(w, "Failed to load font", http.StatusInternalServerError)
+		return
+	}
 
-	// Draw current streak
-	// You might want to add an icon or different styles here
+	dc.DrawStringAnchored(fmt.Sprintf("Total Contributions"), W*0.18, H/4, 0.5, 0.5)
 	dc.DrawStringAnchored(fmt.Sprintf("Current Streak"), W*0.5, H/heightOfLabel, 0.5, 0.5)
-	dc.DrawStringAnchored(fmt.Sprintf("%d", currentStreak), W*0.5, H/heightOfNumber, 0.5, 0.5)
-
-	// Draw longest streak
 	dc.DrawStringAnchored(fmt.Sprintf("Longest Streak"), W*0.82, H/heightOfLabel, 0.5, 0.5)
-	dc.DrawStringAnchored(fmt.Sprintf("%d", longestStreak), W*0.82, H/heightOfNumber, 0.5, 0.5)
 
 	if err := dc.LoadFontFace("./fonts/Roboto/Roboto-Regular.ttf", 16); err != nil {
 		log.Println("Failed to load font:", err)
@@ -80,10 +81,10 @@ func GenerateHandler(db *badger.DB, w http.ResponseWriter, r *http.Request) {
 	heightOfNumber = 1.15
 
 	dc.DrawStringAnchored(fmt.Sprintf("Grace Days Left"), W*0.5, H/heightOfLabel, 0.5, 0.5)
-	dc.DrawStringAnchored(fmt.Sprintf("%d", bonusDays), W*0.5, H/heightOfNumber, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("%d Days", bonusDays), W*0.5, H/heightOfNumber, 0.5, 0.5)
 
 	dc.DrawStringAnchored(fmt.Sprintf("Grace Day Every"), W*0.82, H/heightOfLabel, 0.5, 0.5)
-	dc.DrawStringAnchored(fmt.Sprintf("%d Following Commit Days", bonusDayEvery), W*0.82, H/heightOfNumber, 0.5, 0.5)
+	dc.DrawStringAnchored(fmt.Sprintf("%d Consecutive Commit Days", bonusDayEvery), W*0.82, H/heightOfNumber, 0.5, 0.5)
 
 	// Finish drawing
 	dc.Stroke()

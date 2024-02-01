@@ -64,7 +64,7 @@ func GetCommitDates(db *badger.DB, user string) (CommitDataCollection, error) {
 	var cdc CommitDataCollection
 	var lastFetchTime time.Time
 	currentYear := time.Now().Year()
-	fetchInterval := 6 * time.Hour
+	fetchInterval := 1 * time.Hour
 	dataFoundInDB := false
 
 	// Attempt to retrieve data and last fetch time from BadgerDB

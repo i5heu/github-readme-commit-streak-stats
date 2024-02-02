@@ -141,7 +141,10 @@ func CalculateStreaks(commitData []getData.CommitData, bonusDayEvery int) (int, 
 
 		if cd.Count > 0 || streakDataSlice[streakIndex].BonusDays > 0 || cd == commitData[len(commitData)-1] {
 
-			if streakDataSlice[streakIndex].EligibleContributionDays == bonusDayEvery {
+			// if the current day would lead to a bonus day we need to add it early so we can see the bonus day in the rendered image
+			if streakDataSlice[streakIndex].EligibleContributionDays == bonusDayEvery ||
+				(cd.Count > 0 && streakDataSlice[streakIndex].EligibleContributionDays == bonusDayEvery-1 && cd == commitData[len(commitData)-1]) {
+
 				streakDataSlice[streakIndex].BonusDays++
 				streakDataSlice[streakIndex].EligibleContributionDays = 0
 			}

@@ -2,6 +2,7 @@ package generate
 
 import (
 	"fmt"
+	"image/jpeg"
 	"log"
 	"net/http"
 	"regexp"
@@ -90,11 +91,22 @@ func GenerateHandler(db *badger.DB, w http.ResponseWriter, r *http.Request) {
 	dc.Stroke()
 
 	// Encode as PNG
-	err = dc.EncodePNG(w)
+	// err = dc.EncodePNG(w)
+	// if err != nil {
+	// 	http.Error(w, err.Error(), http.StatusInternalServerError)
+	// 	return
+	// }
+
+	img := dc.Image()
+
+	// Encode as JPEG
+	quality := 80
+	err = jpeg.Encode(w, img, &jpeg.Options{Quality: quality})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 }
 
 // Assuming sortCommitData function sorts commitData in ascending order by date

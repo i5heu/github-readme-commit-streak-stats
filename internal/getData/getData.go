@@ -130,17 +130,39 @@ func GetCommitDates(db *badger.DB, user string) (CommitDataCollection, error) {
 			return CommitDataCollection{}, err
 		}
 
-		updated := false
-		for i, data := range cdc.CommitData {
+		updatedData := make([]CommitData, 0)
+		existingDataMap := make(map[string]CommitData)
+
+		// Convert existing commit data for the current year to a map for easy lookup
+		for _, data := range cdc.CommitData {
 			if data.Year == currentYear {
-				cdc.CommitData[i] = cdcYear.CommitData[0] // Assuming cdcYear.CommitData contains current year data
-				updated = true
-				break
+				key := fmt.Sprintf("%d-%d-%d", data.Year, data.Month, data.Day)
+				existingDataMap[key] = data
+			} else {
+				// Keep data for other years as is
+				updatedData = append(updatedData, data)
 			}
 		}
-		if !updated {
-			cdc.CommitData = append(cdc.CommitData, cdcYear.CommitData...)
+
+		// Merge or update data for the current year
+		for _, newData := range cdcYear.CommitData {
+			key := fmt.Sprintf("%d-%d-%d", newData.Year, newData.Month, newData.Day)
+			if _, exists := existingDataMap[key]; exists {
+				// Update the existing entry
+				existingDataMap[key] = newData
+			} else {
+				// Add new entry if it doesn't exist
+				existingDataMap[key] = newData
+			}
 		}
+
+		// Convert the map back to a slice
+		for _, data := range existingDataMap {
+			updatedData = append(updatedData, data)
+		}
+
+		// Replace the old commit data with the updated data
+		cdc.CommitData = updatedData
 
 		// Update last fetch time
 		lastFetchTime = time.Now()
